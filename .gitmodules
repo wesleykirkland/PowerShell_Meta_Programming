@@ -1,0 +1,3 @@
+[submodule "Summit2017"]
+	path = Summit2017
+	url = https://github.com/wesleykirkland/Summit2017
