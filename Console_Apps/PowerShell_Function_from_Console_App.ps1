@@ -1,5 +1,6 @@
 #Global Vars
-$SectionPatterns = '::|##'
+$SectionPatterns = "^::.*|^##.*" #This pattern matches on section header starts
+$SectionPatternCharactersToReplace = "[:|#]" #This pattern matches on characters to replace when sanatizing the section header
 [System.Collections.ArrayList]$SectionHeaderVariables = @()
 $VerbosePreference = 'Continue'
 
@@ -7,7 +8,7 @@ $VerbosePreference = 'Continue'
 Set-Location 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
 
 #Binary we want to convert
-$BinaryHelpInfo = robocopy.exe /?
+$BinaryHelpInfo = Robocopy.exe /?
 
 #Basic sanitization of the help data, removes excess lines and leading/trailing spaces
 $BinaryHelpInfo = $BinaryHelpInfo | Where-Object {$_}
@@ -15,7 +16,6 @@ $BinaryHelpInfo = $BinaryHelpInfo | Where-Object {$_}
 #Loop through the file and find the major sections of data
 for ($i = 0; $i -lt $BinaryHelpInfo.Count; $i++) {
     $BinaryHelpInfoHeaderMatch = $BinaryHelpInfo[$i] -match $SectionPatterns
-    #if ($i = 12) {$true} #TEMP debug
 
     if ($BinaryHelpInfoHeaderMatch) {
         Write-Verbose "We matched a section header on line ""$($BinaryHelpInfo[$i])""" #Quotes for character escaping
@@ -24,7 +24,7 @@ for ($i = 0; $i -lt $BinaryHelpInfo.Count; $i++) {
         $SectionHeaderLine = $true
 
         #Attempt to strip out the header name so we can use it later
-        $HeaderNameReplaced = ($BinaryHelpInfo[$i] -replace $SectionPatterns, '').Trim()
+        $HeaderNameReplaced = ($BinaryHelpInfo[$i] -replace $SectionPatternCharactersToReplace, '').Trim()
         if ($HeaderNameReplaced) {
             Write-Verbose "Section Header Name is $HeaderNameReplaced"
             $Script:SectionHeaderName = $HeaderNameReplaced
