@@ -135,4 +135,4 @@ foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderNam
 }
 
 #Reformat and join together ParametersInformation
-$ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={($Psitem.ParameterHelp -join ' ').Trim('.')}}
+$ParametersInformation = $ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={($Psitem.ParameterHelp -join ' ').Trim('.')}}
