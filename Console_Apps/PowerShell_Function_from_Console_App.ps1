@@ -52,7 +52,7 @@ for ($i = 0; $i -lt $BinaryHelpInfo.Count; $i++) {
 
                         $SectionHeaderVariables.Add($SectionHeaderNameObject) | Out-Null
                     } Catch {}
-                    $i = $i - 1 #Step the loop back int 1 so we don't miss the line
+                    $i-- #Step the loop back int 1 so we don't miss the line
                 } else {
                     $SectionVariableCreated = $false
                     Write-Verbose "$SectionVariableName was taken, incrementing +1 and looping"
@@ -78,15 +78,25 @@ for ($i = 0; $i -lt $BinaryHelpInfo.Count; $i++) {
     } #end Normal Line elseif
 } #End for loop
 
-#Find all sections that have actual options available
-$SectionHeaderVariablesWithOptions = $SectionHeaderVariables | Where-Object {($PSItem.HeaderName -like "*Options*")}
-
-foreach ($Section in $SectionHeaderVariablesWithOptions) {
+#Find all sections that have actual options available and process them
+foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderName -like "*Options*")})) {
     $Lines = (Get-Variable -Name $Section.SectionVariable).Value | Where-Object {$PSItem} #Get the value and remove blank lines
 
-    for ($i = 0; $i -lt $array.Count; $i++) {
-        if ($Lines[$i] -match $LinePatterns) {
-            if ($ParameterName -and $ParameterHelpInfo) {
+    for ($i = 0; $i -lt $Lines.Count; $i++) {
+        #Check if we are going to start definining a new parameter and store it as a boolean
+        $NewParameter = if ($Lines[$i] -match $LinePatterns) {
+            $true
+        } else {
+            $false
+        }
+
+        if ($NewParameter)  {
+            #If a new parameter commit the previous information
+            if (
+                    $ParameterName -and
+                    $ParameterHelpInfo -and
+                    $NewParameter
+                ) {
                 Write-Verbose 'We found an existing parameter so we will add it to the ArrayList'
                 
                 $ParameterToAdd = New-Object -TypeName psobject
@@ -94,13 +104,17 @@ foreach ($Section in $SectionHeaderVariablesWithOptions) {
                 $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $ParameterHelpInfo
 
                 $ParametersInformation.Add($ParameterToAdd) | Out-Null
-                #Remove the previous parameter information
+                
+                Write-Verbose 'Remove the previous parameter information'
                 Remove-Variable ParameterName,ParameterHelpInfo,ParameterHelpString
             }
 
-           $LineSplit = ($Lines[$i].Split(':') -replace '/','').Trim()
-           
-           if ($LineSplit.Count -gt 1) { 
+            #Split the line so we can get its help information, we do two split because console apps split different
+            $LineSplit = ($Lines[$i].Split(':') -replace '/','').Trim() -split ' {2,}'
+            Write-Verbose "Starting to work on a new parameter $($LineSplit[0]) on line $i" #While this should go above, we're leaving it here for debugging
+
+            if ($LineSplit.Count -gt 1) { 
+                Write-Verbose 'The line count is multiline'
                 $ParameterName = $LineSplit[0]
                 $ParameterHelpString = (($Lines[$i].Split(':') -replace '/','').Trim()[-1] -replace '<*.*>','').Trim()
 
@@ -109,9 +123,15 @@ foreach ($Section in $SectionHeaderVariablesWithOptions) {
 
                 #Add the help information to the HelpInfo Property
                 $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
-            } elseif ($Lines[$i].Trim() -notmatch $LinePatterns) {
-               $ParameterHelpInfo.Add($Lines[$i].Trim())
-           }
-        }
+            }
+        } else {
+            Write-Verbose "Line $i is a continuation of the help file for Parameter $ParameterName in Section $($Section.SectionVariable)"
+            if ($Lines[$i] -like "*") {
+                $ParameterHelpInfo.Add($Lines[$i].Trim()) | Out-Null
+            }
+        } #if NewParameter
     }
 }
+
+#Reformat and join together ParametersInformation
+$ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={$Psitem.ParameterHelp -join ' '}}
