@@ -11,27 +11,41 @@ $VerbosePreference = 'Continue' #Debugging my code
 Set-Location 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
 
 #Binary we want to convert, you know I'm really developing a hatred for legacy console applications
-$BinaryHelpInfo = robocopy.exe /?
+$BinaryHelpInfo = Robocopy.exe /?
 
 #Basic sanitization of the help data, removes excess lines and leading/trailing spaces
 $BinaryHelpInfo = $BinaryHelpInfo | Where-Object {$_}
 
+#Lets first scan for any possible section header match, if there are none were going to define a single section
+$NoSectionHeadersFound = (!($BinaryHelpInfo -match $SectionPatterns))
+
 #Loop through the file and find the major sections of data
 for ($i = 0; $i -lt $BinaryHelpInfo.Count; $i++) {
-    $BinaryHelpInfoHeaderMatch = $BinaryHelpInfo[$i] -match $SectionPatterns
+    #Regular section header scan
+    if (($NoSectionHeadersFound) -and (!($NoSectionHeadersFoundOneTimeScan))) {
+        Write-Verbose 'No Section Header was found so were going to say we found one'
+        $BinaryHelpInfoHeaderMatch = $true
+        $NoSectionHeadersFoundOneTimeScan = $true
+    } else {
+        $BinaryHelpInfoHeaderMatch = $BinaryHelpInfo[$i] -match $SectionPatterns
+    }
 
     if ($BinaryHelpInfoHeaderMatch) {
-        Write-Verbose "We matched a section header on line ""$($BinaryHelpInfo[$i])""" #Quotes for character escaping
+        if (!($NoSectionHeadersFound)) {
+            Write-Verbose "We matched a section header on line ""$($BinaryHelpInfo[$i])""" #Quotes for character escaping
+        }
 
         #Set a temp variable as a indicator that we hit a section header
         $SectionHeaderLine = $true
 
-        #Attempt to strip out the header name so we can use it later
-        $HeaderNameReplaced = ($BinaryHelpInfo[$i] -replace $SectionPatternCharactersToReplace, '').Trim()
-        if ($HeaderNameReplaced) {
-            Write-Verbose "Section Header Name is $HeaderNameReplaced"
-            $Script:SectionHeaderName = $HeaderNameReplaced
+        if ($NoSectionHeadersFound) {
+            $Script:SectionHeaderName = 'Options'
+        } else {
+            $Script:SectionHeaderName = ($BinaryHelpInfo[$i] -replace $SectionPatternCharactersToReplace, '').Trim()
         }
+
+        #Attempt to strip out the header name so we can use it later, or make one up        
+        Write-Verbose "Section Header Name is ""$Script:SectionHeaderName"""
     } elseif (
             ($SectionHeaderLine) -and
             (!($BinaryHelpInfoHeaderMatch))
@@ -90,7 +104,7 @@ foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderNam
             $false
         }
 
-        if ($NewParameter)  {
+        if ($NewParameter) {
             #If a new parameter commit the previous information
             if (
                     $ParameterName -and
@@ -124,7 +138,7 @@ foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderNam
                 #Add the help information to the HelpInfo Property
                 $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
             }
-        } else {
+        } elseif ($ParameterName) { #Make sure there is an actual parameter were adding to
             Write-Verbose "Line $i is a continuation of the help file for Parameter $ParameterName in Section $($Section.SectionVariable)"
             if ($Lines[$i] -like "*") {
                 #The split is to remove excessive spaces, and then we rejoin it into a real string
