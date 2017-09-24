@@ -11,7 +11,7 @@ $VerbosePreference = 'Continue' #Debugging my code
 Set-Location 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
 
 #Binary we want to convert, you know I'm really developing a hatred for legacy console applications
-$BinaryHelpInfo = Robocopy.exe /?
+$BinaryHelpInfo = .\AzCopy.exe /?
 
 #Basic sanitization of the help data, removes excess lines and leading/trailing spaces
 $BinaryHelpInfo = $BinaryHelpInfo | Where-Object {$_}
@@ -39,9 +39,15 @@ for ($i = 0; $i -lt $BinaryHelpInfo.Count; $i++) {
         $SectionHeaderLine = $true
 
         if ($NoSectionHeadersFound) {
-            $Script:SectionHeaderName = 'Options'
+            $HeaderNameReplaced = 'Options'
         } else {
-            $Script:SectionHeaderName = ($BinaryHelpInfo[$i] -replace $SectionPatternCharactersToReplace, '').Trim()
+            $HeaderNameReplaced = ($BinaryHelpInfo[$i] -replace $SectionPatternCharactersToReplace, '').Trim()
+        }
+
+        #We have to check for replacement so we get the real header
+        if ($HeaderNameReplaced) {
+            Write-Verbose "Section Header Name is $HeaderNameReplaced"
+            $Script:SectionHeaderName = $HeaderNameReplaced
         }
 
         #Attempt to strip out the header name so we can use it later, or make one up        
