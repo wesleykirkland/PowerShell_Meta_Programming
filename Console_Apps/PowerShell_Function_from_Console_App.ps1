@@ -11,7 +11,7 @@ $VerbosePreference = 'Continue' #Debugging my code
 Set-Location 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
 
 #Binary we want to convert, you know I'm really developing a hatred for legacy console applications
-$BinaryHelpInfo = .\AzCopy.exe /?
+$BinaryHelpInfo = robocopy.exe /?
 
 #Basic sanitization of the help data, removes excess lines and leading/trailing spaces
 $BinaryHelpInfo = $BinaryHelpInfo | Where-Object {$_}
@@ -84,7 +84,7 @@ foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderNam
 
     for ($i = 0; $i -lt $Lines.Count; $i++) {
         #Check if we are going to start definining a new parameter and store it as a boolean
-        $NewParameter = if ($Lines[$i] -match $LinePatterns) {
+        $NewParameter = if ($Lines[$i].Trim() -match $LinePatterns) {
             $true
         } else {
             $false
@@ -116,7 +116,7 @@ foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderNam
             if ($LineSplit.Count -gt 1) { 
                 Write-Verbose 'The line count is multiline'
                 $ParameterName = $LineSplit[0]
-                $ParameterHelpString = (($Lines[$i].Split(':') -replace '/','').Trim()[-1] -replace '<*.*>','').Trim()
+                $ParameterHelpString = (($Lines[$i].Split(':') -split ' {2,}' -replace '/','').Where{$PSItem}[-1].Trim() -replace '<*.*>','').Trim() #Yes the second split must be that way, don't use the method
 
                 #Establish a variable to hold the help information in
                 [System.Collections.ArrayList]$ParameterHelpInfo = @()
@@ -127,11 +127,12 @@ foreach ($Section in ($SectionHeaderVariables | Where-Object {($PSItem.HeaderNam
         } else {
             Write-Verbose "Line $i is a continuation of the help file for Parameter $ParameterName in Section $($Section.SectionVariable)"
             if ($Lines[$i] -like "*") {
-                $ParameterHelpInfo.Add($Lines[$i].Trim()) | Out-Null
+                #The split is to remove excessive spaces, and then we rejoin it into a real string
+                $ParameterHelpInfo.Add($Lines[$i].Trim() -split ' {2,}' -join ' ') | Out-Null
             }
         } #if NewParameter
     }
 }
 
 #Reformat and join together ParametersInformation
-$ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={$Psitem.ParameterHelp -join ' '}}
+$ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={($Psitem.ParameterHelp -join ' ').Trim('.')}}
