@@ -2,6 +2,7 @@
 $SectionPatterns = "^::.*|^##.*" #This pattern matches on section header starts
 $SectionPatternCharactersToReplace = "[:|#]" #This pattern matches on characters to replace when sanatizing the section header
 [System.Collections.ArrayList]$SectionHeaderVariables = @()
+[System.Collections.ArrayList]$ParametersInformation = @()
 #Line matching
 $LinePatterns = "^/.*"
 $VerbosePreference = 'Continue' #Debugging my code
@@ -83,13 +84,34 @@ $SectionHeaderVariablesWithOptions = $SectionHeaderVariables | Where-Object {($P
 foreach ($Section in $SectionHeaderVariablesWithOptions) {
     $Lines = (Get-Variable -Name $Section.SectionVariable).Value | Where-Object {$PSItem} #Get the value and remove blank lines
 
-    foreach ($Line in $Lines) {
-        if ($Line -match $LinePatterns) {
-           $LineSplit = ($Line.Split(':') -replace '/','').Trim()
+    for ($i = 0; $i -lt $array.Count; $i++) {
+        if ($Lines[$i] -match $LinePatterns) {
+            if ($ParameterName -and $ParameterHelpInfo) {
+                Write-Verbose 'We found an existing parameter so we will add it to the ArrayList'
+                
+                $ParameterToAdd = New-Object -TypeName psobject
+                $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $ParameterName
+                $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $ParameterHelpInfo
 
-           $ParameterToAdd = New-Object -TypeName psobject
-           $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $LineSplit[0]
-           $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value (($Line.Split(':') -replace '/','').Trim()[-1] -replace '<*.*>','').Trim()
+                $ParametersInformation.Add($ParameterToAdd) | Out-Null
+                #Remove the previous parameter information
+                Remove-Variable ParameterName,ParameterHelpInfo,ParameterHelpString
+            }
+
+           $LineSplit = ($Lines[$i].Split(':') -replace '/','').Trim()
+           
+           if ($LineSplit.Count -gt 1) { 
+                $ParameterName = $LineSplit[0]
+                $ParameterHelpString = (($Lines[$i].Split(':') -replace '/','').Trim()[-1] -replace '<*.*>','').Trim()
+
+                #Establish a variable to hold the help information in
+                [System.Collections.ArrayList]$ParameterHelpInfo = @()
+
+                #Add the help information to the HelpInfo Property
+                $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
+            } elseif ($Lines[$i].Trim() -notmatch $LinePatterns) {
+               $ParameterHelpInfo.Add($Lines[$i].Trim())
+           }
         }
     }
 }
