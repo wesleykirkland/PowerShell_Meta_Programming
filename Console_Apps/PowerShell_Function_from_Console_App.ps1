@@ -226,3 +226,72 @@ function Convert-ConsoleApplicationHelp {
     #Return the new parameters
     return $ParametersInformation
 }
+
+function Invoke-ConsoleApplicationWrapper {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(
+            Mandatory = $false,
+            Position = 0,
+            HelpMessage = 'The path to the binary, the full path is highly suggested'
+        )]
+        [string]$BinaryPath = 'C:\Windows\System32',
+
+        [Parameter(
+            Mandatory = $true,
+            Position = 1,
+            HelpMessage = 'The binary name, i.e. binary.exe'
+        )]
+        [string]$BinaryExecutable,
+        
+        [Parameter(
+            Mandatory = $false,
+            Position = 2,
+            HelpMessage = 'The switch used to access the built in help, typically /?'
+        )]
+        [string]$HelpArgument = '/?'
+    )
+
+    DynamicParam {
+        if ($BinaryPath -and $BinaryExecutable -and $HelpArgument) {
+                Write-Verbose 'Running Convert-ConsoleApplicationHelp function'
+                #TACO Convert to PSBoundParameters Later
+                $ParametersInformation = Convert-ConsoleApplicationHelp -BinaryPath $BinaryPath -BinaryExecutable $BinaryExecutable -HelpArgument $HelpArgument
+                
+                #Build the Parameter Dictionary
+                $paramDictionary = New-Object -Type System.Management.Automation.RuntimeDefinedParameterDictionary
+                
+                #Meta Program all the things!
+                for ($i = 0; $i -lt $ParametersInformation.Count; $i++) {
+                    #Define the basic parameter information
+                    $attributes = New-Object System.Management.Automation.ParameterAttribute
+                    $attributes.ParameterSetName = "__AllParameterSets"
+                    $attributes.Mandatory = $false
+                    $attributes.HelpMessage = $ParametersInformation[$i].ParameterHelp
+                    
+                    $attributeCollection = New-Object -Type System.Collections.ObjectModel.Collection[System.Attribute]
+                    $attributeCollection.Add($attributes)
+                    
+                    $dynParam = New-Object -Type System.Management.Automation.RuntimeDefinedParameter(
+                        $ParametersInformation[$i].ParameterName,
+                        [String],
+                        $attributeCollection
+                    )
+    
+                    $paramDictionary.Add($ParametersInformation[$i].ParameterName, $dynParam)
+                }
+
+                #Return the object for consumption
+                return $paramDictionary
+            } #End If
+        }
+
+    Begin {}
+    Process {
+        $paramDictionary
+    }
+    End {}
+}
+
+Invoke-ConsoleApplicationWrapper -
