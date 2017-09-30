@@ -227,6 +227,9 @@ function Convert-ConsoleApplicationHelp {
     return $ParametersInformation
 }
 
+
+<#
+Bad attempt at making a dynamic parameter function
 function Invoke-ConsoleApplicationWrapper {
     [CmdletBinding()]
     Param
@@ -294,4 +297,125 @@ function Invoke-ConsoleApplicationWrapper {
     End {}
 }
 
-Invoke-ConsoleApplicationWrapper -
+#>
+
+#This function generates the base code to generate a new sub function
+function Invoke-BinaryFunctionGeneration {
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(
+            Mandatory = $false,
+            Position = 0,
+            HelpMessage = 'The path to the binary, the full path is highly suggested'
+        )]
+        [string]$BinaryPath = 'C:\Windows\System32',
+
+        [Parameter(
+            Mandatory = $true,
+            Position = 1,
+            HelpMessage = 'The binary name, i.e. binary.exe'
+        )]
+        [string]$BinaryExecutable,
+        
+        [Parameter(
+            Mandatory = $false,
+            Position = 2,
+            HelpMessage = 'The switch used to access the built in help, typically /?'
+        )]
+        [string]$HelpArgument = '/?'
+    )
+
+    #Convert to PS Bound Parameters Later
+    $Parameters = Convert-ConsoleApplicationHelp -BinaryPath $BinaryPath -BinaryExecutable $BinaryExecutable -HelpArgument $HelpArgument
+
+#Generate the actual code for the new function
+<#$FunctionCode = @"
+function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
+    #Make the function an advanced function, I mean really this is freaking metaprogramming all!
+    [CmdletBinding()]
+    Param
+    (
+    $(
+        foreach ($Parameter in $Output) {
+            $ParamName = $((Get-Variable -Name Parameter).Value.ParameterName)
+        "
+        [Parameter(
+            Mandatory = $false,
+            HelpMessage = '$((Get-Variable -Name Parameter).Value.ParameterHelp)'
+        )]
+        $('$'`$ParamName)
+        "
+        }
+    )
+    ) #Close out the parameter block
+}
+"@ #Do not text align this, otherwise it will break
+#>
+
+    Write-Verbose 'Generating the real function code'
+    [System.Collections.ArrayList]$FunctionCode = @()
+
+    #Base Function Code, the indentation is supposed to look off
+    $FunctionCode.Add("
+function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
+    #Make the function an advanced function, I mean really this is freaking metaprogramming all!
+    [CmdletBinding()]
+    Param
+    (") | Out-Null
+
+    #For loop parameter block
+    for ($i = 0; $i -lt $Parameters.Count; $i++) {
+        #Build the actual string, the first line is far out for indentation
+        $String = "    [Parameter(
+            Mandatory = {0},
+            HelpMessage = '{1}'
+    )]
+        {2}{3}{4}
+        " -f '$false',$Parameters[$i].ParameterHelp.Replace("'","''"),"$",$Parameters[$i].ParameterName,$(if ($i -ne ($Output.Count - 1)) {','})
+        
+        Write-Verbose 'Adding the new function to our ArrayList'
+        $FunctionCode.Add($String) | Out-Null
+    }
+    <#
+    #Start building the param block
+    foreach ($Parameter in $Output) {
+        #Build the actual string, the first line is far out for indentation
+        $String = "     [Parameter(
+            Mandatory = {0},
+            HelpMessage = '{1}'
+        )]
+        {2}{3},
+        " -f '$false',$Parameter.ParameterHelp.Replace("'","''"),"$",$Parameter.ParameterName
+
+        Write-Verbose 'Adding the new function to our ArrayList'
+        $FunctionCode.Add($String) | Out-Null
+    }
+    #>
+
+    #Add the finishing touch to the parameter block
+    $FunctionCode.Add('    )
+    ') | Out-Null
+
+    #Generate more base base, again more indentation
+    $FunctionCode.Add("    Begin {}
+    Process {
+    ")
+
+    #Working code for Process
+    $String = '    $PSBoundParameters
+    }
+}'
+
+$FunctionCode
+
+    #$FunctionCode.Add('$PSBoundParameters')
+    #Generate the code to execute the binary
+    #$FunctionCode = & $FFMPEGBinary -y -i "concat:$JoinedTSFiles" -bsf:a aac_adtstoasc -c copy $DumpDirectoryMovies\$FileName.mp4)
+
+}
+
+
+$Output = Invoke-BinaryFunctionGeneration -Binarypath 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy' -BinaryExecutable AzCopy.exe
+
+$Output | clip
