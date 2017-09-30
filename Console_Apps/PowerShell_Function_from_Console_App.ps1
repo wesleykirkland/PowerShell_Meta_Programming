@@ -60,6 +60,19 @@ function Convert-ConsoleApplicationHelp {
     [System.Collections.ArrayList]$SectionHeaderVariables = @() #ArrayList to store Variables of Parameter Sections
     [System.Collections.ArrayList]$ParametersInformation = @() #ArrayList to store Parameter Names and help information
     $LinePatterns = "^/.*" #Regex to designate the start of a parameter
+    $BannedParameters = "^/@.*"#Parameters that are not PS Compliant
+
+
+    #Functions
+    #Function to add Paramter Help Information
+    function Add-ParameterHelpInformation ($Lines, $i, $ParameterHelpInfo) {
+        Write-Verbose "Line $i is a continuation of the help file for Parameter $ParameterName in Section $($Section.SectionVariable)"
+        #The split is to remove excessive spaces, and then we rejoin it into a real string
+        $ParameterHelpString = $Lines[$i].Trim() -split ' {2,}' -join ' ' #Remove Excess Spaces
+        $ParameterHelpString = $ParameterHelpString.Replace('[','<').Replace(']','>') #Replace brackets with <,>, this is for PS Parameter compliance
+        $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
+    
+    }
 
     Write-Verbose 'CD''ing to the directory, because lord forbid we test paths in Program Files (x86)'
     #This is why, dear Microsoft you suck for this - https://stackoverflow.com/questions/4429112/powershell-combining-path-using-a-variable
@@ -176,13 +189,21 @@ function Convert-ConsoleApplicationHelp {
                 $false
             }
 
-            if ($NewParameter) {
+            if (
+                ($NewParameter) -and
+                ($Lines[$i] -notmatch $BannedParameters)
+            ) {
+                #Split the line so we can get its help information, we do two split because console apps split different
+                $LineSplit = ($Lines[$i].Split(':') -replace '/','').Trim() -split ' {2,}'
+                Write-Verbose "Starting to work on a new parameter $($LineSplit[0]) on line $i" #While this should go above, we're leaving it here for debugging
+
                 #If a new parameter commit the previous information
                 if (
-                        $ParameterName -and
-                        $ParameterHelpInfo -and
-                        $NewParameter
-                    ) {
+                    $ParameterName -and
+                    $ParameterHelpInfo -and
+                    $NewParameter -and
+                    $LineSplit[0].Split().Count -eq 1
+                ) {
                     Write-Verbose 'We found an existing parameter so we will add it to the ArrayList'
                     
                     $ParameterToAdd = New-Object -TypeName psobject
@@ -195,30 +216,32 @@ function Convert-ConsoleApplicationHelp {
                     Remove-Variable ParameterName,ParameterHelpInfo,ParameterHelpString
                 }
 
-                #Split the line so we can get its help information, we do two split because console apps split different
-                $LineSplit = ($Lines[$i].Split(':') -replace '/','').Trim() -split ' {2,}'
-                Write-Verbose "Starting to work on a new parameter $($LineSplit[0]) on line $i" #While this should go above, we're leaving it here for debugging
-
                 if ($LineSplit.Count -gt 1) { 
-                    Write-Verbose 'The line count is multiline'
-                    $ParameterName = $LineSplit[0]
-                    $ParameterHelpString = (($Lines[$i].Split(':') -split ' {2,}' -replace '/','').Where{$PSItem}[-1].Trim() -replace '<*.*>','').Trim() #Yes the second split must be that way, don't use the method
+                    if ($LineSplit[0].Split().Count -eq 1) {
+                        Write-Verbose 'The line count is multiline'
+                        $ParameterName = $LineSplit[0]
+                        $ParameterHelpString = (($Lines[$i].Split(':') -split ' {2,}' -replace '/','').Where{$PSItem}[-1].Trim() -replace '<*.*>','').Trim() #Yes the second split must be that way, don't use the method
 
-                    #Establish a variable to hold the help information in
-                    [System.Collections.ArrayList]$ParameterHelpInfo = @()
+                        #Establish a variable to hold the help information in
+                        [System.Collections.ArrayList]$ParameterHelpInfo = @()
 
-                    #Add the help information to the HelpInfo Property
-                    $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
+                        #Add the help information to the HelpInfo Property
+                        $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
+                    } else {
+                        Write-Verbose "Line $i is a continuation of the help file for Parameter $ParameterName in Section $($Section.SectionVariable)"
+                        if ($Lines[$i] -like "*") {
+                            Add-ParameterHelpInformation -Lines $Lines -i $i -ParameterHelpInfo $ParameterHelpInfo
+                        }
+                    }
                 }
             } elseif ($ParameterName) { #Make sure there is an actual parameter were adding to
                 Write-Verbose "Line $i is a continuation of the help file for Parameter $ParameterName in Section $($Section.SectionVariable)"
                 if ($Lines[$i] -like "*") {
-                    #The split is to remove excessive spaces, and then we rejoin it into a real string
-                    $ParameterHelpInfo.Add($Lines[$i].Trim() -split ' {2,}' -join ' ') | Out-Null
+                    Add-ParameterHelpInformation -Lines $Lines -i $i -ParameterHelpInfo $ParameterHelpInfo
                 }
-            } #if NewParameter
-        }
-    }
+            } #elseif ParameterName
+        } #End for
+    } #End foreach
 
     #Reformat and join together ParametersInformation
     $ParametersInformation = $ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={($Psitem.ParameterHelp -join ' ').Trim('.')}}
@@ -226,7 +249,6 @@ function Convert-ConsoleApplicationHelp {
     #Return the new parameters
     return $ParametersInformation
 }
-
 
 <#
 Bad attempt at making a dynamic parameter function
