@@ -70,6 +70,7 @@ function Convert-ConsoleApplicationHelp {
         #The split is to remove excessive spaces, and then we rejoin it into a real string
         $ParameterHelpString = $Lines[$i].Trim() -split ' {2,}' -join ' ' #Remove Excess Spaces
         $ParameterHelpString = $ParameterHelpString.Replace('[','<').Replace(']','>') #Replace brackets with <,>, this is for PS Parameter compliance
+        $ParameterHelpString = $ParameterHelpString.Replace('(','').Replace(')','') #Replace parentheses with nothing, this is for PS Parameter compliance
         $ParameterHelpInfo.Add($ParameterHelpString) | Out-Null
     
     }
@@ -204,7 +205,7 @@ function Convert-ConsoleApplicationHelp {
                     $NewParameter -and
                     $LineSplit[0].Split().Count -eq 1
                 ) {
-                    Write-Verbose 'We found an existing parameter so we will add it to the ArrayList'
+                    Write-Verbose "We found an existing parameter $ParameterName so we will add it to the ArrayList"
                     
                     $ParameterToAdd = New-Object -TypeName psobject
                     $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $ParameterName
@@ -318,7 +319,6 @@ function Invoke-ConsoleApplicationWrapper {
     }
     End {}
 }
-
 #>
 
 #This function generates the base code to generate a new sub function
