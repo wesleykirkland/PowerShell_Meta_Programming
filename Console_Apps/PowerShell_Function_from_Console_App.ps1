@@ -261,8 +261,7 @@ $Binaryexecutable = 'azcopy.exe'
 $BinaryPath = 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
 $HelpArgument = '/?'
 
-<#
-#Bad attempt at making a dynamic parameter function
+#Function to interact with Convert-ConsoleApplicationHelp
 function Invoke-ConsoleApplicationWrapper {
     [CmdletBinding()]
     Param
@@ -272,7 +271,7 @@ function Invoke-ConsoleApplicationWrapper {
             Position = 0,
             HelpMessage = 'The path to the binary, the full path is highly suggested'
         )]
-        [string]$BinaryPath = 'C:\Windows\System32',
+        [string]$BinaryPath,
 
         [Parameter(
             Mandatory = $true,
@@ -286,14 +285,15 @@ function Invoke-ConsoleApplicationWrapper {
             Position = 2,
             HelpMessage = 'The switch used to access the built in help, typically /?'
         )]
-        [string]$HelpArgument = '/?'
+        [string]$HelpArgument
     )
 
     DynamicParam {
         if ($true) {
+            do {
                 Write-Verbose 'Running Convert-ConsoleApplicationHelp function'
                 #TACO Convert to PSBoundParameters Later
-                $ParametersInformation = Convert-ConsoleApplicationHelp -BinaryPath $BinaryPath -BinaryExecutable $BinaryExecutable -HelpArgument $HelpArgument
+                $ParametersInformation = Convert-ConsoleApplicationHelp -BinaryPath $PSBoundParameters.BinaryPath -BinaryExecutable $PSBoundParameters.BinaryExecutable -HelpArgument $PSBoundParameters.HelpArgument
                 
                 #Build the Parameter Dictionary
                 $paramDictionary = New-Object -Type System.Management.Automation.RuntimeDefinedParameterDictionary
@@ -314,14 +314,15 @@ function Invoke-ConsoleApplicationWrapper {
                         [String],
                         $attributeCollection
                     )
-    
+
                     $paramDictionary.Add($ParametersInformation[$i].ParameterName, $dynParam)
                 }
 
                 #Return the object for consumption
                 return $paramDictionary
-            } #End If
-        }
+            }  until ($paramDictionary)
+        } #End If
+    }
 
     Begin {}
     Process {
@@ -329,9 +330,6 @@ function Invoke-ConsoleApplicationWrapper {
     }
     End {}
 }
-
-invoke-ConsoleApplicationWrapper -binarypath 
-#>
 
 #This function generates the base code to generate a new sub function
 function Invoke-BinaryFunctionGeneration {
