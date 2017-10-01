@@ -244,8 +244,13 @@ function Convert-ConsoleApplicationHelp {
         } #End for
     } #End foreach
 
-    #Reformat and join together ParametersInformation
-    $ParametersInformation = $ParametersInformation | Select-Object ParameterName,@{Name='ParameterHelp';Expression={($Psitem.ParameterHelp -join ' ').Trim('.')}}
+    #Reformat and join together ParametersInformation, and remove possible duplicates
+    $ParametersInformation = $ParametersInformation |
+        Select-Object ParameterName,@{Name='ParameterHelp';Expression={($Psitem.ParameterHelp -join ' ').Trim('.')}} |
+        Group-Object ParameterName |
+        ForEach-Object {
+            $PSItem.Group | Select-Object -First 1
+        }
 
     #Return the new parameters
     return $ParametersInformation
