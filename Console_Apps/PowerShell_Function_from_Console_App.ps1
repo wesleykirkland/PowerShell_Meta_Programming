@@ -256,10 +256,25 @@ function Convert-ConsoleApplicationHelp {
     return $ParametersInformation
 }
 
+#TO Do
+#New new style invocation for Robocopy
+#Test with Xcopy and AZCopy and Robocopy again
 
-$Binaryexecutable = 'azcopy.exe'
-$BinaryPath = 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
+$TestingProgram = 'robocopy'
+switch ($TestingProgram) {
+    'azcopy' {
+        $Binaryexecutable = 'azcopy.exe'
+        $BinaryPath = 'C:\temp\azcopy'
+    }
+
+    'robocopy' {
+        $Binaryexecutable = 'robocopy.exe'
+        $BinaryPath = 'C:\Windows\System32'
+    }
+}
+
 $HelpArgument = '/?'
+$VerbosePreference = 'continue'
 
 #Function to interact with Convert-ConsoleApplicationHelp
 function Invoke-ConsoleApplicationWrapper {
@@ -278,21 +293,37 @@ function Invoke-ConsoleApplicationWrapper {
     
     .PARAMETER HelpArgument
     What you would use on the legacy console application binary to show the help file, typically /?
-    
+
+    .PARAMETER ParameterSpacing
+    Special parameter spacing for non standard parameter style of /Param Arg, AZCopy uses /Param:Arg
+
+    .PARAMETER SeperateWindow
+    Switch to spawn the process in a new window with Start-Process without waiting, useful for keeping processes seperate or multitasking
+
+    .PARAMETER OptionalParameter1
+    Type in any optional parameters that were not detected from the conversion of help, this is inputed a string during execution
+
+    .PARAMETER OptionalParameter2
+    Type in any optional parameters that were not detected from the conversion of help, this is inputed a string during execution
+
     .EXAMPLE
     Invoke-ConsoleApplicationWrapper -BinaryPath C:\Windows\System32 -BinaryExecutable xcopy.exe -HelpArgument '/?'
 
     .EXAMPLE
     Invoke-ConsoleApplicationWrapper -BinaryPath C:\temp\AZCopy -BinaryExecutable AZCopy.exe -HelpArgument '/?'
+
+    .EXAMPLE
+    Invoke-ConsoleApplicationWrapper -BinaryPath C:\Windows\System32 -BinaryExecutable Robocopy.exe -HelpArgument '/?'
     
     .NOTES
     This was originally built for AZCopy but due to PS limitations with Program Files (x86, copy AZCopy somewhere out of Program Files (x86))
+    If a parameter from the legacy console application was a switch, this wrapper will assume its a string. Instead to use it as a switch during invokecation use $null for the string. e.g. "-MIR $null" for robocopy
     #>
     [CmdletBinding()]
     Param
     (
         [Parameter(
-            Mandatory = $false,
+            Mandatory = $true,
             Position = 0,
             HelpMessage = 'The path to the binary, the full path is highly suggested'
         )]
@@ -310,14 +341,41 @@ function Invoke-ConsoleApplicationWrapper {
             Position = 2,
             HelpMessage = 'The switch used to access the built in help, typically /?'
         )]
-        [string]$HelpArgument
+        [string]$HelpArgument,
+
+        [Parameter(
+            Mandatory = $false,
+            Position = 3,
+            HelpMessage = 'The parameter specific spacing, most of the time a single space between the parameter and the arguement, though things like AZCopy are stupid and do /Param:Arg'
+        )]
+        [string]$ParameterSpacing = ' ',
+
+        [Parameter(
+            Mandatory = $false,
+            Position = 4,
+            HelpMessage = 'Use this switch if you want to use Start-Process in a new window for invocation'
+        )]
+        [switch]$SeperateWindow,
+
+        [Parameter(
+            Mandatory = $false,
+            Position = 5,
+            HelpMessage = 'This is an optional parameter for things like Robocopy source'
+        )]
+        [string]$OptionalParameter1,
+
+        [Parameter(
+            Mandatory = $false,
+            Position = 6,
+            HelpMessage = 'This is an optional parameter for things like Robocopy source'
+        )]
+        [string]$OptionalParameter2
     )
 
     DynamicParam {
         if ($true) {
             do {
                 Write-Verbose 'Running Convert-ConsoleApplicationHelp function'
-                #TACO Convert to PSBoundParameters Later
                 $ParametersInformation = Convert-ConsoleApplicationHelp -BinaryPath $PSBoundParameters.BinaryPath -BinaryExecutable $PSBoundParameters.BinaryExecutable -HelpArgument $PSBoundParameters.HelpArgument
                 
                 #Build the Parameter Dictionary
@@ -351,7 +409,38 @@ function Invoke-ConsoleApplicationWrapper {
 
     Begin {}
     Process {
-        $paramDictionary
+        [System.Collections.ArrayList]$Arguments = @()
+
+        #To Do, loop through all the optional parameters and maybe even make them dynamic for an unlimited number
+        if ($OptionalParameter1) {
+            $Arguments.Add("$($OptionalParameter1)") | Out-Null
+        }
+
+        if ($OptionalParameter2) {
+            $Arguments.Add("$($OptionalParameter2)") | Out-Null
+        }
+
+        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter")})) {
+            if ($Parameter.Value) {
+                Write-Verbose "Parameter $($Parameter.Key) has a value, we will use it"
+                $Arguments.Add("/$($Parameter.Key)$($ParameterSpacing)$($Parameter.Value)") | Out-Null
+            } else {
+                Write-Verbose "Parameter $($Parameter.Key) has no value, we will make it look like a switch below"
+                $Arguments.Add("/$($Parameter.Key)") | Out-Null
+            }
+        }
+        
+        Write-Verbose "$(Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable)"
+        Write-Verbose "$($Arguments.Trim() -join ' ')"
+
+        #Invoke the legacy app
+        if ($SeperateWindow) {
+            Write-Verbose 'SeperateWindow was invoked, using Start-Process Invocation method'
+            Start-Process (Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable) ($Arguments -join ' ')
+        } else {
+            Write-Verbose 'Using legacy console invocation method'
+            & "$(Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable)" $Arguments
+        }
     }
     End {}
 }
