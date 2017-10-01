@@ -256,8 +256,13 @@ function Convert-ConsoleApplicationHelp {
     return $ParametersInformation
 }
 
+
+$Binaryexecutable = 'azcopy.exe'
+$BinaryPath = 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy'
+$HelpArgument = '/?'
+
 <#
-Bad attempt at making a dynamic parameter function
+#Bad attempt at making a dynamic parameter function
 function Invoke-ConsoleApplicationWrapper {
     [CmdletBinding()]
     Param
@@ -285,7 +290,7 @@ function Invoke-ConsoleApplicationWrapper {
     )
 
     DynamicParam {
-        if ($BinaryPath -and $BinaryExecutable -and $HelpArgument) {
+        if ($true) {
                 Write-Verbose 'Running Convert-ConsoleApplicationHelp function'
                 #TACO Convert to PSBoundParameters Later
                 $ParametersInformation = Convert-ConsoleApplicationHelp -BinaryPath $BinaryPath -BinaryExecutable $BinaryExecutable -HelpArgument $HelpArgument
@@ -324,6 +329,8 @@ function Invoke-ConsoleApplicationWrapper {
     }
     End {}
 }
+
+invoke-ConsoleApplicationWrapper -binarypath 
 #>
 
 #This function generates the base code to generate a new sub function
