@@ -1,3 +1,4 @@
+#Function to convert legacy console application switches/parameters into a Key/Value pair
 function Convert-ConsoleApplicationHelp {
     <#
     .SYNOPSIS
@@ -256,26 +257,6 @@ function Convert-ConsoleApplicationHelp {
     return $ParametersInformation
 }
 
-#TO Do
-#New new style invocation for Robocopy
-#Test with Xcopy and AZCopy and Robocopy again
-
-$TestingProgram = 'robocopy'
-switch ($TestingProgram) {
-    'azcopy' {
-        $Binaryexecutable = 'azcopy.exe'
-        $BinaryPath = 'C:\temp\azcopy'
-    }
-
-    'robocopy' {
-        $Binaryexecutable = 'robocopy.exe'
-        $BinaryPath = 'C:\Windows\System32'
-    }
-}
-
-$HelpArgument = '/?'
-$VerbosePreference = 'continue'
-
 #Function to interact with Convert-ConsoleApplicationHelp
 function Invoke-ConsoleApplicationWrapper {
     <#
@@ -420,7 +401,7 @@ function Invoke-ConsoleApplicationWrapper {
             $Arguments.Add("$($OptionalParameter2)") | Out-Null
         }
 
-        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter")})) {
+        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeperateWindow")})) {
             if ($Parameter.Value) {
                 Write-Verbose "Parameter $($Parameter.Key) has a value, we will use it"
                 $Arguments.Add("/$($Parameter.Key)$($ParameterSpacing)$($Parameter.Value)") | Out-Null
@@ -436,7 +417,7 @@ function Invoke-ConsoleApplicationWrapper {
         #Invoke the legacy app
         if ($SeperateWindow) {
             Write-Verbose 'SeperateWindow was invoked, using Start-Process Invocation method'
-            Start-Process (Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable) ($Arguments -join ' ')
+            Start-Process -FilePath (Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable) -ArgumentList ($Arguments -join ' ')
         } else {
             Write-Verbose 'Using legacy console invocation method'
             & "$(Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable)" $Arguments
