@@ -221,7 +221,7 @@ function Convert-ConsoleApplicationHelp {
                 if ($LineSplit.Count -gt 1) { 
                     if ($LineSplit[0].Split().Count -eq 1) {
                         Write-Verbose 'The line count is multiline'
-                        $ParameterName = $LineSplit[0]
+                        $ParameterName = $LineSplit[0].Replace('[','').Replace(']','') #Replace illegal characters from parameters like this /MT[:n]
                         $ParameterHelpString = (($Lines[$i].Split(':') -split ' {2,}' -replace '/','').Where{$PSItem}[-1].Trim() -replace '<*.*>','').Trim() #Yes the second split must be that way, don't use the method
 
                         #Establish a variable to hold the help information in
@@ -278,8 +278,8 @@ function Invoke-ConsoleApplicationWrapper {
     .PARAMETER ParameterSpacing
     Special parameter spacing for non standard parameter style of /Param Arg, AZCopy uses /Param:Arg
 
-    .PARAMETER SeperateWindow
-    Switch to spawn the process in a new window with Start-Process without waiting, useful for keeping processes seperate or multitasking
+    .PARAMETER SeparateWindow
+    Switch to spawn the process in a new window with Start-Process without waiting, useful for keeping processes separate or multitasking
 
     .PARAMETER OptionalParameter1
     Type in any optional parameters that were not detected from the conversion of help, this is inputed a string during execution
@@ -336,7 +336,7 @@ function Invoke-ConsoleApplicationWrapper {
             Position = 4,
             HelpMessage = 'Use this switch if you want to use Start-Process in a new window for invocation'
         )]
-        [switch]$SeperateWindow,
+        [switch]$SeparateWindow,
 
         [Parameter(
             Mandatory = $false,
@@ -348,7 +348,7 @@ function Invoke-ConsoleApplicationWrapper {
         [Parameter(
             Mandatory = $false,
             Position = 6,
-            HelpMessage = 'This is an optional parameter for things like Robocopy source'
+            HelpMessage = 'This is an optional parameter for things like Robocopy destination'
         )]
         [string]$OptionalParameter2
     )
@@ -401,7 +401,7 @@ function Invoke-ConsoleApplicationWrapper {
             $Arguments.Add("$($OptionalParameter2)") | Out-Null
         }
 
-        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeperateWindow")})) {
+        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeparateWindow")})) {
             if ($Parameter.Value) {
                 Write-Verbose "Parameter $($Parameter.Key) has a value, we will use it"
                 $Arguments.Add("/$($Parameter.Key)$($ParameterSpacing)$($Parameter.Value)") | Out-Null
@@ -415,8 +415,8 @@ function Invoke-ConsoleApplicationWrapper {
         Write-Verbose "$($Arguments.Trim() -join ' ')"
 
         #Invoke the legacy app
-        if ($SeperateWindow) {
-            Write-Verbose 'SeperateWindow was invoked, using Start-Process Invocation method'
+        if ($SeparateWindow) {
+            Write-Verbose 'SeparateWindow was invoked, using Start-Process Invocation method'
             Start-Process -FilePath (Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable) -ArgumentList ($Arguments -join ' ')
         } else {
             Write-Verbose 'Using legacy console invocation method'
