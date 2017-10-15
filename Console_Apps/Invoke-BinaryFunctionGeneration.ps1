@@ -30,6 +30,8 @@ function Invoke-BinaryFunctionGeneration {
 
     Write-Verbose 'Adding in extra parameters that are in the dynamic function'
     $AdditionalParameters = @{
+        'BinaryPath' = 'The path to the binary, the full path is highly suggested';
+        'BinaryExecutable' = 'The binary name, i.e. binary.exe';
         'ParameterSpacing' = 'The parameter specific spacing, most of the time a single space between the parameter and the arguement, though things like AZCopy are stupid and do /Param:Arg';
         'SeparateWindow' = 'Use this switch if you want to use Start-Process in a new window for invocation';
         'OptionalParameter1' = 'This is an optional parameter for things like Robocopy source';
@@ -127,17 +129,11 @@ function Invoke-BinaryFunctionGeneration {
     $FunctionCode.Add("    }
     End {}") | Out-Null
 
+    Write-Verbose 'Adding the last } to close out the function'
     $FunctionCode.Add('}') | Out-Null
 
-    $FunctionCode | clip
-
-    #$FunctionCode.Add('$PSBoundParameters')
-    #Generate the code to execute the binary
-    #$FunctionCode = & $FFMPEGBinary -y -i "concat:$JoinedTSFiles" -bsf:a aac_adtstoasc -c copy $DumpDirectoryMovies\$FileName.mp4)
-
+    Write-Verbose 'Writing the static function to the console'
+    $FunctionCode
 }
 
-
-$Output = Invoke-BinaryFunctionGeneration -Binarypath 'C:\Program Files (x86)\Microsoft SDKs\Azure\AzCopy' -BinaryExecutable AzCopy.exe
-
-$Output | clip
+Invoke-BinaryFunctionGeneration -BinaryPath C:\Windows\System32 -BinaryExecutable Robocopy.exe -HelpArgument /? | clip.exe
