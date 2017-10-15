@@ -221,7 +221,7 @@ function Convert-ConsoleApplicationHelp {
                 if ($LineSplit.Count -gt 1) { 
                     if ($LineSplit[0].Split().Count -eq 1) {
                         Write-Verbose 'The line count is multiline'
-                        $ParameterName = $LineSplit[0]
+                        $ParameterName = $LineSplit[0].Replace('[','').Replace(']','') #Replace illegal characters from parameters like this /MT[:n]
                         $ParameterHelpString = (($Lines[$i].Split(':') -split ' {2,}' -replace '/','').Where{$PSItem}[-1].Trim() -replace '<*.*>','').Trim() #Yes the second split must be that way, don't use the method
 
                         #Establish a variable to hold the help information in
@@ -348,7 +348,7 @@ function Invoke-ConsoleApplicationWrapper {
         [Parameter(
             Mandatory = $false,
             Position = 6,
-            HelpMessage = 'This is an optional parameter for things like Robocopy source'
+            HelpMessage = 'This is an optional parameter for things like Robocopy destination'
         )]
         [string]$OptionalParameter2
     )
