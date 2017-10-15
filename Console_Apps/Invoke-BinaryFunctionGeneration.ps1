@@ -31,7 +31,7 @@ function Invoke-BinaryFunctionGeneration {
     Write-Verbose 'Adding in extra parameters that are in the dynamic function'
     $AdditionalParameters = @{
         'ParameterSpacing' = 'The parameter specific spacing, most of the time a single space between the parameter and the arguement, though things like AZCopy are stupid and do /Param:Arg';
-        'SeperateWindow' = 'Use this switch if you want to use Start-Process in a new window for invocation';
+        'SeparateWindow' = 'Use this switch if you want to use Start-Process in a new window for invocation';
         'OptionalParameter1' = 'This is an optional parameter for things like Robocopy source';
         'OptionalParameter2' = 'This is an optional parameter for things like Robocopy destination'
     }
@@ -45,8 +45,7 @@ function Invoke-BinaryFunctionGeneration {
     }
 
     Write-Verbose 'Run Convert-ConsoleApplicationHelp to get legacy parameters'
-    #TACOS - Convert to PS Bound Parameters Later
-    $BinaryParameters = Convert-ConsoleApplicationHelp -BinaryPath $BinaryPath -BinaryExecutable $BinaryExecutable -HelpArgument $HelpArgument
+    $BinaryParameters = Convert-ConsoleApplicationHelp -BinaryPath $PSBoundParameters.BinaryPath -BinaryExecutable $PSBoundParameters.BinaryExecutable -HelpArgument $PSBoundParameters.HelpArgument
 
     Write-Verbose 'Adding in the original extracted parameters to Parameters'
     foreach ($Parameter in $BinaryParameters) {
@@ -60,8 +59,7 @@ function Invoke-BinaryFunctionGeneration {
     [System.Collections.ArrayList]$FunctionCode = @() #Use an arraylist for efficiency/performance of the code generation
 
     Write-Verbose 'Generate the base function code and make it an advanced function'
-    $FunctionCode.Add("
-function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
+    $FunctionCode.Add("function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
     #Make the function an advanced function, I mean really this is freaking metaprogramming all!
     [CmdletBinding()]
     Param
@@ -71,9 +69,9 @@ function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
     for ($i = 0; $i -lt $Parameters.Count; $i++) {
         #Build the actual string, the first line is far out for indentation
         $String = "
-        [Parameter(
-            Mandatory = {0},
-            HelpMessage = '{1}'
+    [Parameter(
+        Mandatory = {0},
+        HelpMessage = '{1}'
     )]
         {2}{3}{4}" -f '$false',$Parameters[$i].ParameterHelp.replace("'","''"),'$',$Parameters[$i].ParameterName,$(if ($i -ne ($Parameters.Count - 1)) {','}) #Don't add a , if it's the last parameter
         
@@ -100,7 +98,7 @@ function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
             $Arguments.Add("$($OptionalParameter2)") | Out-Null
         }
 
-        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeperateWindow")})) {
+        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeparateWindow")})) {
             if ($Parameter.Value) {
                 Write-Verbose "Parameter $($Parameter.Key) has a value, we will use it"
                 $Arguments.Add("/$($Parameter.Key)$($ParameterSpacing)$($Parameter.Value)") | Out-Null
@@ -114,8 +112,8 @@ function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
         Write-Verbose "$($Arguments.Trim() -join '' '')"
 
         #Invoke the legacy app
-        if ($SeperateWindow) {
-            Write-Verbose "SeperateWindow was invoked, using Start-Process Invocation method"
+        if ($SeparateWindow) {
+            Write-Verbose "SeparateWindow was invoked, using Start-Process Invocation method"
             Start-Process -FilePath (Join-Path -Path $BinaryPath -ChildPath $BinaryExecutable) -ArgumentList ($Arguments -join '' '')
         } else {
             Write-Verbose "Using legacy console invocation method"
