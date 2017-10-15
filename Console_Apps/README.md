@@ -31,12 +31,9 @@ What it works with
 
 > **Styles of applications this is compatible with:**
 
-> - AZCopy (You must copy the AZCopy folder out of Program Files (x86) somewhere else, this is a PS Limitation)
-	>  - AZCopy uses Section headers of ##Header## to notate different parameter sets
-> - Robocopy
-	> - Robocopy uses Section headers of ::Header:: to notate different parameter sets
-> - XCopy
-	> - XCopy uses no section headers and just starts listing out parameters
+> - AZCopy style, (You must copy the AZCopy folder out of Program Files (x86) somewhere else, this is a PS Limitation), AZCopy uses Section headers of ##Header## to notate different parameter sets
+> - Robocopy style, Robocopy uses Section headers of ::Header:: to notate different parameter sets
+> - XCopy style, XCopy uses no section headers and just starts listing out parameters
 
 Each one of these styles has been tested and confirmed working with both the Dynamic Parameters and Static Functions
 
