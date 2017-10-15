@@ -51,11 +51,11 @@ This example comes with two different mechanisms for running it Dynamic Paramete
 Dynamic Parameters
 
 > - Can accept illegal parameters such as A+, A-, etc. This is due to how dynamic parameters are generated and parsed
-> Can can not be read as easily so you are dependent upon the helper functions behaving correctly. This can cause issues with misc binaries as every console binary is different
+> - Can can not be read as easily so you are dependent upon the helper functions behaving correctly. This can cause issues with misc binaries as every console binary is different
 > - Significantly slower - As dynamic parameters are parsed on the fly and the underlying conversion function has to run everything it takes 5-10x longer to run and process. This is still useful if you are switching back and forth between binaries all day
 
 Static Functions
 > - Can not accept illegal characters in PowerShell parameters
-> Characters sometimes are not escaped properly and can cause issues with code generation
-> Troubleshooting is much easier as you can see the actual code that is generated as it comes into scope
-> Significantly faster as the help is converted and a static function is written on the fly
+> - Characters sometimes are not escaped properly and can cause issues with code generation
+> - Troubleshooting is much easier as you can see the actual code that is generated as it comes into scope
+> - Significantly faster as the help is converted and a static function is written on the fly
