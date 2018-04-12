@@ -1,5 +1,6 @@
 #This function generates the base code to generate a new sub function
 function Invoke-BinaryFunctionGeneration {
+
     [CmdletBinding()]
     Param
     (
@@ -24,7 +25,7 @@ function Invoke-BinaryFunctionGeneration {
         )]
         [string]$HelpArgument = '/?' 
     )
-
+    
     Write-Verbose 'Build the Parameter Dictionary'
     [System.Collections.ArrayList]$Parameters = @()
 
@@ -39,68 +40,69 @@ function Invoke-BinaryFunctionGeneration {
     }
 
     #Loop through the above optional parameters hashtable
-    foreach ($Parameter in ($AdditionalParameters.GetEnumerator() | Sort-Object Name -Descending)) {
+    foreach ($Parameter in $AdditionalParameters.GetEnumerator()) {
         $obj = New-Object -TypeName psobject
         $obj | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $Parameter.Name
         $obj | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $Parameter.Value
-        $Parameters.Add($obj) | Out-Null
+        $Parameters += $obj
     }
 
     Write-Verbose 'Run Convert-ConsoleApplicationHelp to get legacy parameters'
-    $BinaryParameters = Convert-ConsoleApplicationHelp -BinaryPath $PSBoundParameters.BinaryPath -BinaryExecutable $PSBoundParameters.BinaryExecutable -HelpArgument $PSBoundParameters.HelpArgument
+    $BinaryParameters = Convert-ConsoleApplicationHelp @PSBoundParameters
 
     Write-Verbose 'Adding in the original extracted parameters to Parameters'
     foreach ($Parameter in $BinaryParameters) {
         $obj = New-Object -TypeName psobject
         $obj | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $Parameter.ParameterName
         $obj | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $Parameter.ParameterHelp
-        $Parameters.Add($obj) | Out-Null
+        $Parameters += $obj
     }
 
     Write-Verbose 'Generating the real function code'
     [System.Collections.ArrayList]$FunctionCode = @() #Use an arraylist for efficiency/performance of the code generation
 
     Write-Verbose 'Generate the base function code and make it an advanced function'
-    $FunctionCode.Add("function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
-    #Make the function an advanced function, I mean really this is freaking metaprogramming all!
-    [CmdletBinding()]
-    Param
-    (") | Out-Null
+    $function_header = "function Invoke-$($BinaryExecutable.Split('.')[0].ToUpper())Binary {
+        [CmdletBinding()]
+        Param ("
+    $FunctionCode += $function_header
 
     Write-Verbose 'Loop through Parameters with a for loop and build the static code'
-    for ($i = 0; $i -lt $Parameters.Count; $i++) {
+    foreach ($Parameter in $Parameters) {
         #Build the actual string, the first line is far out for indentation
+        
         $String = "
     [Parameter(
-        Mandatory = {0},
-        HelpMessage = '{1}'
+        Mandatory = `$false,
+        HelpMessage = '$($Parameter.ParameterHelp.replace("'","''"))'
     )]
-        {2}{3}{4}" -f '$false',$Parameters[$i].ParameterHelp.replace("'","''"),'$',$Parameters[$i].ParameterName,$(if ($i -ne ($Parameters.Count - 1)) {','}) #Don't add a , if it's the last parameter
+        `$$($Parameter.ParameterName)$(if ($i -ne ($Parameters.Count - 1)) {','})" #Don't add a , if it's the last parameter
         
         Write-Verbose 'Adding the new function to our ArrayList'
-        $FunctionCode.Add($String) | Out-Null
+        $FunctionCode += $String
     }
 
     #Add the finishing touch to the parameter block
-    $FunctionCode.Add('    )') | Out-Null
+    $FunctionCode += '    )'
 
     #Generate more base base, again more indentation
-    $FunctionCode.Add("    Begin {}
-    Process {") | Out-Null
+    $FunctionCode += "    Begin {}
+    Process {"
 
     #Generate the code for the process block
     $String = '        [System.Collections.ArrayList]$Arguments = @()
     
         #To Do, loop through all the optional parameters and maybe even make them dynamic for an unlimited number
         if ($OptionalParameter1) {
-            $Arguments.Add("$($OptionalParameter1)") | Out-Null
+            $Arguments += "$($OptionalParameter1)"
         }
 
         if ($OptionalParameter2) {
-            $Arguments.Add("$($OptionalParameter2)") | Out-Null
+            $Arguments += "$($OptionalParameter2)"
         }
 
-        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeparateWindow")})) {
+        $not_match_string = "BinaryPath|BinaryExecutable|HelpArgument|ParameterSpacing|OptionalParameter|SeparateWindow"
+        foreach ($Parameter in ($PSBoundParameters.GetEnumerator() | Where-Object {($PSItem.Key -notmatch $not_match_string)})) {
             if ($Parameter.Value) {
                 Write-Verbose "Parameter $($Parameter.Key) has a value, we will use it"
                 $Arguments.Add("/$($Parameter.Key)$($ParameterSpacing)$($Parameter.Value)") | Out-Null
@@ -123,14 +125,14 @@ function Invoke-BinaryFunctionGeneration {
         }'
         
     Write-Verbose 'Generate the process block'
-    $FunctionCode.Add($String) | Out-Null
+    $FunctionCode += $String
 
     Write-Verbose 'Generate the End Block'
-    $FunctionCode.Add("    }
-    End {}") | Out-Null
+    $FunctionCode += "    }
+    End {}"
 
     Write-Verbose 'Adding the last } to close out the function'
-    $FunctionCode.Add('}') | Out-Null
+    $FunctionCode += '}'
 
     Write-Verbose 'Writing the static function to the console'
     $FunctionCode
