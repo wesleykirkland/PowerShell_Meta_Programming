@@ -147,11 +147,12 @@ function Convert-ConsoleApplicationHelp {
                         New-Variable $SectionVariableName
                         $SectionVariableCreated = $true
                         Try {
-                            $SectionHeaderNameObject = New-Object -TypeName psobject
-                            $SectionHeaderNameObject | Add-Member -MemberType NoteProperty -Name 'SectionVariable' -Value $SectionVariableName
-                            $SectionHeaderNameObject | Add-Member -MemberType NoteProperty -Name 'HeaderName' -Value $Script:SectionHeaderName
+                            $SectionHeaderNameObject = [pscustomobject]@{
+                                SectionVariable = $SectionVariableName
+                                HeaderName = $Script:SectionHeaderName
+                            }
 
-                            $SectionHeaderVariables.Add($SectionHeaderNameObject) | Out-Null
+                            [void]$SectionHeaderVariables.Add($SectionHeaderNameObject)
                         } Catch {}
                         $i-- #Step the loop back int 1 so we don't miss the line
                     } else {
@@ -208,9 +209,10 @@ function Convert-ConsoleApplicationHelp {
                 ) {
                     Write-Verbose "We found an existing parameter $ParameterName so we will add it to the ArrayList"
                     
-                    $ParameterToAdd = New-Object -TypeName psobject
-                    $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $ParameterName
-                    $ParameterToAdd | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $ParameterHelpInfo
+                    $ParameterToAdd = [pscustomobject]@{
+                        ParameterName = $ParameterName
+                        ParameterHelp = $ParameterHelpInfo
+                    }
 
                     $ParametersInformation.Add($ParameterToAdd) | Out-Null
                     
@@ -221,7 +223,7 @@ function Convert-ConsoleApplicationHelp {
                 if ($LineSplit.Count -gt 1) { 
                     if ($LineSplit[0].Split().Count -eq 1) {
                         Write-Verbose 'The line count is multiline'
-                        $ParameterName = $LineSplit[0].Replace('[','').Replace(']','') #Replace illegal characters from parameters like this /MT[:n]
+                        $ParameterName = $LineSplit[0].Replace('[','').Replace(']','').Replace('+',"PLUS").Replace('-',"MINUS") #Replace illegal characters from parameters like this /MT[:n]
                         $ParameterHelpString = (($Lines[$i].Split(':') -split ' {2,}' -replace '/','').Where{$PSItem}[-1].Trim() -replace '<*.*>','').Trim() #Yes the second split must be that way, don't use the method
 
                         #Establish a variable to hold the help information in
