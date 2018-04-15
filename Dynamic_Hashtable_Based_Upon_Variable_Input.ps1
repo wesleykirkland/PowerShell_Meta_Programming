@@ -8,9 +8,9 @@ function MetaDemo1 ([string[]]$Varinput) {
     Write-Output "We have the following variables to test: $Varinput"
     
     #Build our Object
-    $Object = New-Object -TypeName psobject
+    $Object = New-Object System.Collections.ArrayList
     foreach ($Var in $Varinput) {
-        $Object | Add-Member -MemberType NoteProperty -Name $Var -Value (Get-Variable -Name $Var).Value
+        $Object.Add([pscustomobject]@{Name=$Var;Expression=(Get-Variable -Name $Var).Value})
     }
 
     #Output the Object
