@@ -40,9 +40,10 @@ function Invoke-BinaryFunctionGeneration {
 
     #Loop through the above optional parameters hashtable
     foreach ($Parameter in ($AdditionalParameters.GetEnumerator() | Sort-Object Name -Descending)) {
-        $obj = New-Object -TypeName psobject
-        $obj | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $Parameter.Name
-        $obj | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $Parameter.Value
+        $obj = [pscustomobject]@{
+            ParameterName = $Parameter.Name
+            ParameterHelp = $Parameter.Value
+        }
         $Parameters.Add($obj) | Out-Null
     }
 
@@ -51,9 +52,10 @@ function Invoke-BinaryFunctionGeneration {
 
     Write-Verbose 'Adding in the original extracted parameters to Parameters'
     foreach ($Parameter in $BinaryParameters) {
-        $obj = New-Object -TypeName psobject
-        $obj | Add-Member -MemberType NoteProperty -Name 'ParameterName' -Value $Parameter.ParameterName
-        $obj | Add-Member -MemberType NoteProperty -Name 'ParameterHelp' -Value $Parameter.ParameterHelp
+        $obj = [pscustomobject]@{
+            ParameterName = $Parameter.ParameterName
+            ParameterHelp = $Parameter.ParameterHelp
+        }
         $Parameters.Add($obj) | Out-Null
     }
 
