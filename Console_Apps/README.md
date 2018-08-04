@@ -1,7 +1,7 @@
 Console Apps
 ===================
 
-Hey there! This section was an idea that my coworker had that went just a little to far. The original idea was, we were using AZCopy and with PowerShell being around for many years. Microsoft is still publishing non PowerShell binaries, he thought of writing a PowerShell wrapper for AZcopy. I said screw that, what if I wrote a function in PowerShell that could read the help file from AZCopy on the fly and other similar apps. Then transform it to a made on the fly function out of that help file and the existing parameters.
+Hey there! This section was an idea that my coworker had that went just a little to far. The original idea was, we were using AZCopy and with PowerShell being around for many years. Microsoft is still publishing non PowerShell binaries, he thought of writing a PowerShell wrapper for AZcopy. I said screw that, what if I can write a function in PowerShell that could read the help file from AZCopy on the fly and other similar apps? Then transform it to a made on the fly function out of that help file and the existing parameters. Well that's exactly what I did, and it's here for you to enjoy!
 
 ----------
 
